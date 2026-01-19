@@ -41,7 +41,7 @@
     .card{
       background:var(--card);
       border:1px solid var(--line);
-      border-radius:var(--radius);
+      border-radius:18px;
       padding:14px;
       box-shadow:0 10px 25px rgba(0,0,0,.25);
     }
@@ -148,7 +148,6 @@
       border-top:1px solid rgba(38,39,43,.7);
       backdrop-filter:saturate(180%) blur(12px);
     }
-    /* 2 kolon grid; buton sayısı artsa da alt satıra otomatik geçer */
     .footerRow{
       max-width:720px; margin:0 auto;
       display:grid; grid-template-columns:1fr 1fr; gap:10px;
@@ -163,10 +162,10 @@
       transition:opacity .2s ease;
     }
     .toast.show{ opacity:1; }
+
     .hint{
       font-size:12px; color:var(--muted); line-height:1.35;
     }
-    code{ background:#0f1012; padding:2px 6px; border-radius:8px; border:1px solid var(--line); }
   </style>
 </head>
 <body>
@@ -316,14 +315,12 @@
 
   // ---- Month list build ----
   const buildMonthOptions = () => {
-    // last 12 months + next 1 month
     const now = new Date();
     const months = [];
     for (let i=0; i<14; i++){
       const d = new Date(now.getFullYear(), now.getMonth()-11+i, 1);
       months.push(yyyyMm(d));
     }
-    // plus any months in existing data
     expenses.forEach(e => { if (e.ym && !months.includes(e.ym)) months.push(e.ym); });
     months.sort();
 
@@ -335,11 +332,9 @@
       monthPick.appendChild(opt);
     });
 
-    // set selected = current month
     const cur = yyyyMm(new Date());
     monthPick.value = months.includes(cur) ? cur : months[months.length-1];
 
-    // quick tabs: prev, current, next
     quickTabs.innerHTML = "";
     const curDate = new Date();
     const tabMonths = [
@@ -363,7 +358,6 @@
   };
 
   const render = () => {
-    // update quick tabs active
     [...quickTabs.querySelectorAll(".tab")].forEach(btn => {
       btn.classList.toggle("active", btn.textContent === monthTitle(monthPick.value));
     });
@@ -425,7 +419,6 @@
       listEl.appendChild(row);
     });
 
-    // storage info
     try {
       const size = (localStorage.getItem(KEY) || "").length;
       storageInfo.textContent = `Veri: ${Math.round(size/1024)} KB`;
@@ -455,12 +448,10 @@
     expenses.push(item);
     saveAll(expenses);
 
-    // reset inputs
     titleEl.value = "";
     amountEl.value = "";
     dateEl.value = `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
 
-    // show that month
     monthPick.value = ym;
 
     toast("Kaydedildi ✅");
@@ -490,9 +481,10 @@
     toast("Dışa aktarıldı 📦");
   };
 
-  // ✅ Excel butonu: CSV export
+  // ✅ Excel butonu: SADECE SEÇİLİ AY CSV
   const exportCSV = () => {
-    // Excel TR için ; ayırıcı + UTF-8 BOM (Türkçe karakter bozulmasın)
+    const selectedYM = monthPick.value;
+
     const BOM = "\uFEFF";
     const header = ["Tarih", "Ay", "Masraf İçeriği", "Tutar"];
 
@@ -501,11 +493,11 @@
       return `"${t.replaceAll('"', '""')}"`;
     };
 
-    // Tüm kayıtlar (tarihe göre eski -> yeni)
     const rows = [...expenses]
+      .filter(e => e.ym === selectedYM)
       .sort((a,b) => a.dateISO.localeCompare(b.dateISO))
       .map(e => {
-        const amount = (Math.round(e.amount * 100) / 100).toFixed(2).replace(".", ","); // TR ondalık
+        const amount = (Math.round(e.amount * 100) / 100).toFixed(2).replace(".", ",");
         return [
           esc(e.dateISO),
           esc(monthTitle(e.ym)),
@@ -521,13 +513,13 @@
 
     const a = document.createElement("a");
     a.href = url;
-    a.download = `masraf-defteri-${Date.now()}.csv`;
+    a.download = `masraf-defteri-${selectedYM}.csv`;
     document.body.appendChild(a);
     a.click();
     a.remove();
 
     URL.revokeObjectURL(url);
-    toast("CSV hazır ✅ (Excel açar)");
+    toast("Seçili ay CSV hazır ✅");
   };
 
   const importData = async () => {
@@ -570,7 +562,6 @@
     render();
   };
 
-  // events
   saveBtn.addEventListener("click", addExpense);
   csvBtn.addEventListener("click", exportCSV);
   monthPick.addEventListener("change", render);
@@ -579,7 +570,6 @@
   importBtn.addEventListener("click", importData);
   wipeBtn.addEventListener("click", wipeAll);
 
-  // init
   buildMonthOptions();
   render();
 })();
