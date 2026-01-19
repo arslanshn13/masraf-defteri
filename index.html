@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#111111" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Masraf Defteri</title>
+
+  <link rel="manifest" href="manifest.webmanifest">
+  <!-- İkon ekleyeceksen -->
+  <!-- <link rel="apple-touch-icon" href="icon-192.png"> -->
+
+  <style>
+    :root{
+      --bg:#0b0b0c; --card:#141416; --muted:#9aa0a6; --text:#f1f3f4;
+      --accent:#4ade80; --danger:#ef4444; --line:#26272b;
+      --radius:18px;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;
+      background:linear-gradient(180deg,#060607 0%, #0b0b0c 40%, #0b0b0c 100%);
+      color:var(--text);
+    }
+    header{
+      position:sticky; top:0; z-index:10;
+      padding:16px 16px 10px;
+      backdrop-filter:saturate(180%) blur(12px);
+      background:rgba(11,11,12,.7);
+      border-bottom:1px solid rgba(38,39,43,.7);
+    }
+    .title{ font-size:20px; font-weight:800; letter-spacing:.2px; }
+    .sub{ color:var(--muted); font-size:12px; margin-top:4px; }
+
+    .wrap{ padding:14px 16px 90px; max-width:720px; margin:0 auto; }
+    .grid{ display:grid; gap:12px; }
+
+    .card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      padding:14px;
+      box-shadow:0 10px 25px rgba(0,0,0,.25);
+    }
+
+    label{ display:block; font-size:12px; color:var(--muted); margin:10px 0 6px; }
+    input, select{
+      width:100%;
+      padding:12px 12px;
+      border-radius:14px;
+      border:1px solid var(--line);
+      background:#0f1012;
+      color:var(--text);
+      outline:none;
+      font-size:16px;
+    }
+    input::placeholder{ color:#6b7280; }
+
+    .row{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+    @media (max-width:420px){ .row{ grid-template-columns:1fr; } }
+
+    .btn{
+      width:100%;
+      padding:12px 14px;
+      border-radius:14px;
+      border:1px solid transparent;
+      background:var(--accent);
+      color:#04120a;
+      font-weight:800;
+      font-size:16px;
+      cursor:pointer;
+      user-select:none;
+    }
+    .btn:active{ transform:translateY(1px); }
+    .btn.secondary{
+      background:transparent;
+      border-color:var(--line);
+      color:var(--text);
+      font-weight:700;
+    }
+    .btn.danger{
+      background:transparent;
+      border-color:rgba(239,68,68,.5);
+      color:#fecaca;
+      font-weight:800;
+    }
+
+    .tabs{
+      display:flex; gap:8px; overflow:auto; padding-bottom:4px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .tab{
+      flex:0 0 auto;
+      padding:10px 12px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background:#0f1012;
+      color:var(--text);
+      font-weight:700;
+      font-size:13px;
+      cursor:pointer;
+    }
+    .tab.active{
+      border-color:rgba(74,222,128,.6);
+      box-shadow:0 0 0 2px rgba(74,222,128,.15) inset;
+    }
+
+    .totals{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px;
+    }
+    .big{
+      font-size:20px; font-weight:900;
+    }
+    .muted{ color:var(--muted); font-size:12px; }
+
+    .list{ margin-top:10px; display:grid; gap:10px; }
+    .item{
+      border:1px solid var(--line);
+      background:#0f1012;
+      border-radius:16px;
+      padding:12px;
+      display:flex; align-items:flex-start; justify-content:space-between;
+      gap:10px;
+    }
+    .left{ min-width:0; }
+    .name{ font-weight:800; font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .meta{ color:var(--muted); font-size:12px; margin-top:4px; }
+    .amount{ font-weight:900; font-size:15px; white-space:nowrap; }
+    .trash{
+      margin-top:6px;
+      background:transparent;
+      border:1px solid rgba(239,68,68,.35);
+      color:#fecaca;
+      border-radius:12px;
+      padding:8px 10px;
+      font-weight:800;
+      cursor:pointer;
+    }
+
+    .footerBar{
+      position:fixed; left:0; right:0; bottom:0; z-index:20;
+      padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+      background:rgba(11,11,12,.8);
+      border-top:1px solid rgba(38,39,43,.7);
+      backdrop-filter:saturate(180%) blur(12px);
+    }
+    .footerRow{ max-width:720px; margin:0 auto; display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .toast{
+      position:fixed; left:50%; bottom:76px; transform:translateX(-50%);
+      background:#0f1012; border:1px solid var(--line);
+      padding:10px 12px; border-radius:14px;
+      font-weight:800; font-size:13px;
+      opacity:0; pointer-events:none;
+      transition:opacity .2s ease;
+    }
+    .toast.show{ opacity:1; }
+    .hint{
+      font-size:12px; color:var(--muted); line-height:1.35;
+    }
+    code{ background:#0f1012; padding:2px 6px; border-radius:8px; border:1px solid var(--line); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title">Masraf Defteri</div>
+    <div class="sub">Telefonda kalır. Aylara göre ayırır. Offline çalışır (Ana Ekrana ekleyince daha tatlı).</div>
+  </header>
+
+  <div class="wrap">
+    <div class="grid">
+
+      <div class="card">
+        <div class="totals">
+          <div>
+            <div class="muted" id="monthLabel">Bu Ay</div>
+            <div class="big" id="monthTotal">₺0,00</div>
+          </div>
+          <div style="text-align:right">
+            <div class="muted">Kayıt</div>
+            <div class="big" id="monthCount">0</div>
+          </div>
+        </div>
+        <div class="hint" style="margin-top:10px">
+          Not: iPhone’da PWA tam performans için Safari → Paylaş → <b>Ana Ekrana Ekle</b>.
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="font-weight:900; font-size:14px;">MASRAF</div>
+
+        <label for="title">Masraf İçeriği</label>
+        <input id="title" placeholder="Örn: Market, benzin, yemek..." maxlength="80" />
+
+        <div class="row">
+          <div>
+            <label for="amount">Ücret</label>
+            <input id="amount" inputmode="decimal" placeholder="Örn: 350" />
+          </div>
+          <div>
+            <label for="date">Tarih</label>
+            <input id="date" type="date" />
+          </div>
+        </div>
+
+        <label for="monthPick">Ay Görünümü</label>
+        <select id="monthPick"></select>
+
+        <div class="tabs" id="quickTabs" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+          <div style="font-weight:900;">Kayıtlar</div>
+          <div class="muted" id="storageInfo"></div>
+        </div>
+        <div class="list" id="list"></div>
+        <div class="hint" id="emptyHint" style="display:none; margin-top:10px;">
+          Daha kayıt yok. Üstten masraf gir, <b>Kaydet</b> de.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="footerBar">
+    <div class="footerRow">
+      <button class="btn" id="saveBtn">Masrafı Kaydet</button>
+      <button class="btn secondary" id="exportBtn">Dışa Aktar</button>
+      <button class="btn secondary" id="importBtn">İçe Aktar</button>
+      <button class="btn danger" id="wipeBtn">Hepsini Sil</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Kaydedildi ✅</div>
+
+<script>
+(() => {
+  // ---- PWA SW kayıt ----
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./sw.js").catch(()=>{});
+    });
+  }
+
+  // ---- Helpers ----
+  const money = (val) => {
+    try {
+      return new Intl.NumberFormat("tr-TR", { style:"currency", currency:"TRY" }).format(val);
+    } catch {
+      return "₺" + (Math.round(val*100)/100).toFixed(2);
+    }
+  };
+
+  const pad = (n) => String(n).padStart(2,"0");
+  const yyyyMm = (d) => `${d.getFullYear()}-${pad(d.getMonth()+1)}`;
+  const monthTitle = (ym) => {
+    const [y,m] = ym.split("-").map(Number);
+    const dt = new Date(y, m-1, 1);
+    return dt.toLocaleDateString("tr-TR", { month:"long", year:"numeric" }).replace(/^./, c=>c.toUpperCase());
+  };
+
+  const toastEl = document.getElementById("toast");
+  const toast = (txt) => {
+    toastEl.textContent = txt;
+    toastEl.classList.add("show");
+    setTimeout(()=>toastEl.classList.remove("show"), 1200);
+  };
+
+  // ---- Storage ----
+  const KEY = "masraf_defteri_v1";
+  const load = () => {
+    try {
+      const raw = localStorage.getItem(KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  };
+  const saveAll = (arr) => localStorage.setItem(KEY, JSON.stringify(arr));
+
+  // Expense: { id, dateISO(yyyy-mm-dd), title, amount, ym }
+  let expenses = load();
+
+  // ---- UI refs ----
+  const titleEl = document.getElementById("title");
+  const amountEl = document.getElementById("amount");
+  const dateEl = document.getElementById("date");
+  const monthPick = document.getElementById("monthPick");
+  const quickTabs = document.getElementById("quickTabs");
+  const listEl = document.getElementById("list");
+  const emptyHint = document.getElementById("emptyHint");
+  const monthLabel = document.getElementById("monthLabel");
+  const monthTotal = document.getElementById("monthTotal");
+  const monthCount = document.getElementById("monthCount");
+  const storageInfo = document.getElementById("storageInfo");
+
+  const saveBtn = document.getElementById("saveBtn");
+  const exportBtn = document.getElementById("exportBtn");
+  const importBtn = document.getElementById("importBtn");
+  const wipeBtn = document.getElementById("wipeBtn");
+
+  // default date today
+  const today = new Date();
+  dateEl.value = `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+
+  // ---- Month list build ----
+  const buildMonthOptions = () => {
+    // last 12 months + next 1 month (isteyene)
+    const now = new Date();
+    const months = [];
+    for (let i=0; i<14; i++){
+      const d = new Date(now.getFullYear(), now.getMonth()-11+i, 1);
+      months.push(yyyyMm(d));
+    }
+    // plus any months in existing data (so data month never disappears)
+    expenses.forEach(e => { if (e.ym && !months.includes(e.ym)) months.push(e.ym); });
+    months.sort();
+
+    monthPick.innerHTML = "";
+    months.forEach(ym => {
+      const opt = document.createElement("option");
+      opt.value = ym;
+      opt.textContent = monthTitle(ym);
+      monthPick.appendChild(opt);
+    });
+
+    // set selected = current month
+    const cur = yyyyMm(new Date());
+    monthPick.value = months.includes(cur) ? cur : months[months.length-1];
+
+    // quick tabs: prev, current, next
+    quickTabs.innerHTML = "";
+    const curDate = new Date();
+    const tabMonths = [
+      yyyyMm(new Date(curDate.getFullYear(), curDate.getMonth()-1, 1)),
+      yyyyMm(new Date(curDate.getFullYear(), curDate.getMonth(), 1)),
+      yyyyMm(new Date(curDate.getFullYear(), curDate.getMonth()+1, 1)),
+    ];
+    tabMonths.forEach(ym => {
+      const b = document.createElement("button");
+      b.className = "tab" + (ym === monthPick.value ? " active":"");
+      b.textContent = monthTitle(ym);
+      b.onclick = () => { monthPick.value = ym; render(); };
+      quickTabs.appendChild(b);
+    });
+  };
+
+  const normalizeAmount = (txt) => {
+    const cleaned = (txt || "").trim().replace(",", ".");
+    // allow "1.234,56" tarzı değil; basit tuttuk
+    const val = Number(cleaned);
+    return Number.isFinite(val) ? val : NaN;
+  };
+
+  const render = () => {
+    // update quick tabs active
+    [...quickTabs.querySelectorAll(".tab")].forEach(btn => {
+      btn.classList.toggle("active", btn.textContent === monthTitle(monthPick.value));
+    });
+
+    const ym = monthPick.value;
+    const filtered = expenses
+      .filter(e => e.ym === ym)
+      .sort((a,b) => (a.dateISO < b.dateISO ? 1 : -1));
+
+    const total = filtered.reduce((s,e)=> s + e.amount, 0);
+    monthLabel.textContent = monthTitle(ym);
+    monthTotal.textContent = money(total);
+    monthCount.textContent = filtered.length;
+
+    listEl.innerHTML = "";
+    emptyHint.style.display = filtered.length ? "none" : "block";
+
+    filtered.forEach(e => {
+      const row = document.createElement("div");
+      row.className = "item";
+
+      const left = document.createElement("div");
+      left.className = "left";
+
+      const name = document.createElement("div");
+      name.className = "name";
+      name.textContent = e.title;
+
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      meta.textContent = new Date(e.dateISO + "T12:00:00").toLocaleDateString("tr-TR", { day:"2-digit", month:"short", year:"numeric" });
+
+      left.appendChild(name);
+      left.appendChild(meta);
+
+      const right = document.createElement("div");
+      right.style.textAlign = "right";
+
+      const amt = document.createElement("div");
+      amt.className = "amount";
+      amt.textContent = money(e.amount);
+
+      const del = document.createElement("button");
+      del.className = "trash";
+      del.textContent = "Sil";
+      del.onclick = () => {
+        expenses = expenses.filter(x => x.id !== e.id);
+        saveAll(expenses);
+        toast("Silindi 🗑️");
+        buildMonthOptions();
+        render();
+      };
+
+      right.appendChild(amt);
+      right.appendChild(del);
+
+      row.appendChild(left);
+      row.appendChild(right);
+      listEl.appendChild(row);
+    });
+
+    // storage info
+    try {
+      const size = (localStorage.getItem(KEY) || "").length;
+      storageInfo.textContent = `Veri: ${Math.round(size/1024)} KB`;
+    } catch { storageInfo.textContent = ""; }
+  };
+
+  const addExpense = () => {
+    const title = titleEl.value.trim();
+    const amount = normalizeAmount(amountEl.value);
+    const dateISO = dateEl.value;
+
+    if (!title) return toast("İçerik boş olmaz.");
+    if (!dateISO) return toast("Tarih seç.");
+    if (!Number.isFinite(amount) || amount <= 0) return toast("Tutar düzgün sayı olsun.");
+
+    const d = new Date(dateISO + "T12:00:00");
+    const ym = yyyyMm(d);
+
+    const item = {
+      id: crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random(),
+      dateISO,
+      title,
+      amount: Math.round(amount * 100) / 100,
+      ym
+    };
+
+    expenses.push(item);
+    saveAll(expenses);
+
+    // reset inputs
+    titleEl.value = "";
+    amountEl.value = "";
+    dateEl.value = `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+
+    // show that month
+    monthPick.value = ym;
+
+    toast("Kaydedildi ✅");
+    buildMonthOptions();
+    render();
+  };
+
+  const exportData = async () => {
+    const data = {
+      exportedAt: new Date().toISOString(),
+      expenses
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
+    const file = new File([blob], `masraf-defteri-${Date.now()}.json`, { type:"application/json" });
+
+    // iOS paylaşım menüsü için
+    if (navigator.canShare && navigator.canShare({ files:[file] })) {
+      await navigator.share({ files:[file], title:"Masraf Defteri", text:"Yedek dosyası" });
+      return;
+    }
+
+    // fallback: download
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = file.name;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast("Dışa aktarıldı 📦");
+  };
+
+  const importData = async () => {
+    const inp = document.createElement("input");
+    inp.type = "file";
+    inp.accept = "application/json";
+    inp.onchange = () => {
+      const f = inp.files?.[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try{
+          const obj = JSON.parse(String(reader.result || "{}"));
+          const arr = Array.isArray(obj.expenses) ? obj.expenses : [];
+          // basit doğrulama
+          const cleaned = arr
+            .filter(x => x && typeof x.title==="string" && typeof x.amount==="number" && typeof x.dateISO==="string" && typeof x.ym==="string")
+            .map(x => ({...x, id: x.id || (crypto?.randomUUID ? crypto.randomUUID() : String(Date.now())+Math.random())}));
+
+          expenses = cleaned;
+          saveAll(expenses);
+          toast("İçe aktarıldı ✅");
+          buildMonthOptions();
+          render();
+        } catch {
+          toast("Dosya bozuk.");
+        }
+      };
+      reader.readAsText(f);
+    };
+    inp.click();
+  };
+
+  const wipeAll = () => {
+    if (!confirm("Hepsini sileceksin. Emin misin?")) return;
+    expenses = [];
+    saveAll(expenses);
+    toast("Temizlendi 🧽");
+    buildMonthOptions();
+    render();
+  };
+
+  // events
+  saveBtn.addEventListener("click", addExpense);
+  monthPick.addEventListener("change", render);
+  exportBtn.addEventListener("click", exportData);
+  importBtn.addEventListener("click", importData);
+  wipeBtn.addEventListener("click", wipeAll);
+
+  // init
+  buildMonthOptions();
+  render();
+})();
+</script>
+</body>
+</html>
