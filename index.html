@@ -9,8 +9,9 @@
   <title>Masraf Defteri</title>
 
   <link rel="manifest" href="manifest.webmanifest">
-  <!-- İkon ekleyeceksen -->
-  <!-- <link rel="apple-touch-icon" href="icon-192.png"> -->
+  <!-- ikon ekleyeceksen:
+  <link rel="apple-touch-icon" href="icon-192.png">
+  -->
 
   <style>
     :root{
@@ -34,7 +35,7 @@
     .title{ font-size:20px; font-weight:800; letter-spacing:.2px; }
     .sub{ color:var(--muted); font-size:12px; margin-top:4px; }
 
-    .wrap{ padding:14px 16px 90px; max-width:720px; margin:0 auto; }
+    .wrap{ padding:14px 16px 120px; max-width:720px; margin:0 auto; }
     .grid{ display:grid; gap:12px; }
 
     .card{
@@ -147,9 +148,14 @@
       border-top:1px solid rgba(38,39,43,.7);
       backdrop-filter:saturate(180%) blur(12px);
     }
-    .footerRow{ max-width:720px; margin:0 auto; display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    /* 2 kolon grid; buton sayısı artsa da alt satıra otomatik geçer */
+    .footerRow{
+      max-width:720px; margin:0 auto;
+      display:grid; grid-template-columns:1fr 1fr; gap:10px;
+    }
+
     .toast{
-      position:fixed; left:50%; bottom:76px; transform:translateX(-50%);
+      position:fixed; left:50%; bottom:110px; transform:translateX(-50%);
       background:#0f1012; border:1px solid var(--line);
       padding:10px 12px; border-radius:14px;
       font-weight:800; font-size:13px;
@@ -226,16 +232,15 @@
   </div>
 
   <div class="footerBar">
-   <div class="footerRow">
-  <button class="btn" id="saveBtn">Masrafı Kaydet</button>
+    <div class="footerRow">
+      <button class="btn" id="saveBtn">Masrafı Kaydet</button>
 
-  <button class="btn secondary" id="csvBtn">Excel (CSV) Aktar</button>
-  <button class="btn secondary" id="exportBtn">Yedek (JSON) Dışa Aktar</button>
+      <button class="btn secondary" id="csvBtn">Excel (CSV) Aktar</button>
+      <button class="btn secondary" id="exportBtn">Yedek (JSON) Dışa Aktar</button>
 
-  <button class="btn secondary" id="importBtn">Yedek (JSON) İçe Aktar</button>
-  <button class="btn danger" id="wipeBtn">Hepsini Sil</button>
-</div>
-
+      <button class="btn secondary" id="importBtn">Yedek (JSON) İçe Aktar</button>
+      <button class="btn danger" id="wipeBtn">Hepsini Sil</button>
+    </div>
   </div>
 
   <div class="toast" id="toast">Kaydedildi ✅</div>
@@ -300,6 +305,7 @@
   const storageInfo = document.getElementById("storageInfo");
 
   const saveBtn = document.getElementById("saveBtn");
+  const csvBtn = document.getElementById("csvBtn");
   const exportBtn = document.getElementById("exportBtn");
   const importBtn = document.getElementById("importBtn");
   const wipeBtn = document.getElementById("wipeBtn");
@@ -310,14 +316,14 @@
 
   // ---- Month list build ----
   const buildMonthOptions = () => {
-    // last 12 months + next 1 month (isteyene)
+    // last 12 months + next 1 month
     const now = new Date();
     const months = [];
     for (let i=0; i<14; i++){
       const d = new Date(now.getFullYear(), now.getMonth()-11+i, 1);
       months.push(yyyyMm(d));
     }
-    // plus any months in existing data (so data month never disappears)
+    // plus any months in existing data
     expenses.forEach(e => { if (e.ym && !months.includes(e.ym)) months.push(e.ym); });
     months.sort();
 
@@ -352,7 +358,6 @@
 
   const normalizeAmount = (txt) => {
     const cleaned = (txt || "").trim().replace(",", ".");
-    // allow "1.234,56" tarzı değil; basit tuttuk
     const val = Number(cleaned);
     return Number.isFinite(val) ? val : NaN;
   };
@@ -471,13 +476,11 @@
     const blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
     const file = new File([blob], `masraf-defteri-${Date.now()}.json`, { type:"application/json" });
 
-    // iOS paylaşım menüsü için
     if (navigator.canShare && navigator.canShare({ files:[file] })) {
       await navigator.share({ files:[file], title:"Masraf Defteri", text:"Yedek dosyası" });
       return;
     }
 
-    // fallback: download
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -485,6 +488,46 @@
     a.click();
     URL.revokeObjectURL(url);
     toast("Dışa aktarıldı 📦");
+  };
+
+  // ✅ Excel butonu: CSV export
+  const exportCSV = () => {
+    // Excel TR için ; ayırıcı + UTF-8 BOM (Türkçe karakter bozulmasın)
+    const BOM = "\uFEFF";
+    const header = ["Tarih", "Ay", "Masraf İçeriği", "Tutar"];
+
+    const esc = (s) => {
+      const t = String(s ?? "");
+      return `"${t.replaceAll('"', '""')}"`;
+    };
+
+    // Tüm kayıtlar (tarihe göre eski -> yeni)
+    const rows = [...expenses]
+      .sort((a,b) => a.dateISO.localeCompare(b.dateISO))
+      .map(e => {
+        const amount = (Math.round(e.amount * 100) / 100).toFixed(2).replace(".", ","); // TR ondalık
+        return [
+          esc(e.dateISO),
+          esc(monthTitle(e.ym)),
+          esc(e.title),
+          esc(amount)
+        ].join(";");
+      });
+
+    const csv = BOM + header.map(esc).join(";") + "\n" + rows.join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `masraf-defteri-${Date.now()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    URL.revokeObjectURL(url);
+    toast("CSV hazır ✅ (Excel açar)");
   };
 
   const importData = async () => {
@@ -499,7 +542,7 @@
         try{
           const obj = JSON.parse(String(reader.result || "{}"));
           const arr = Array.isArray(obj.expenses) ? obj.expenses : [];
-          // basit doğrulama
+
           const cleaned = arr
             .filter(x => x && typeof x.title==="string" && typeof x.amount==="number" && typeof x.dateISO==="string" && typeof x.ym==="string")
             .map(x => ({...x, id: x.id || (crypto?.randomUUID ? crypto.randomUUID() : String(Date.now())+Math.random())}));
@@ -529,7 +572,9 @@
 
   // events
   saveBtn.addEventListener("click", addExpense);
+  csvBtn.addEventListener("click", exportCSV);
   monthPick.addEventListener("change", render);
+
   exportBtn.addEventListener("click", exportData);
   importBtn.addEventListener("click", importData);
   wipeBtn.addEventListener("click", wipeAll);
@@ -541,4 +586,3 @@
 </script>
 </body>
 </html>
-
